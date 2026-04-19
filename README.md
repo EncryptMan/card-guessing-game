@@ -1,3 +1,12 @@
-This repository is empty for now. 
+# Card Guessing Game
 
-We plan to develop a card guessing game using c++. The game will involve players trying to guess a card from a standard deck of 52 playing cards. The game will provide feedback on whether the player's guess is correct or not, and may also include hints to help players make better guesses.
+This project is a simple C++ card guessing game built as a semester project. The idea is straightforward: the player makes guesses, the game responds with feedback, and scoring is tracked across rounds.
+
+The focus of the project is clean object-oriented design with classes for game flow, board handling, cards, scoring, and user interaction.
+
+## Team Members
+
+- Group: S26-05
+- Muhammad Umar (25L-0017)
+- Syed Naday Ali Zaidi (25L-0002)
+- Muhammad Huzaifa Aslam (25L-2558)
