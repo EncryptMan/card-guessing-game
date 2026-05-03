@@ -1,49 +1,58 @@
 # Card Guessing Game
 
-This project is a simple C++ card guessing game built as a semester project. The idea is straightforward: the player makes guesses, the game responds with feedback, and scoring is tracked across rounds.
+A beginner-friendly C++ card guessing game built around six core classes: `Game`, `GameBoard`, `Card`, `Player`, `ScoreSystem`, and `UI`.
 
-The focus of the project is clean object-oriented design with classes for game flow, board handling, cards, scoring, and user interaction.
+## Features
 
-## UI Library
+### Core Features
+- **Memory Matching Gameplay** - Classic card-flipping memory game
+- **4 Difficulty Levels** - Easy, Medium, Hard, Expert with simple presets
+- **Simple Timer** - Built directly into `Game` for easier reading
+- **Simple Hint Counter** - Hint usage is tracked in `Game`
+- **Easy Scoring** - Straightforward score updates in `ScoreSystem`
+- **High Score Tracking** - Persistent high scores saved to file
+- **raylib UI** - Graphical interface with real-time stats
 
-This version uses `raylib` for a graphical UI.
+### Difficulty Levels
 
-## Project Structure
+| Level | Board | Time | Hints | Multiplier |
+|-------|-------|------|-------|-----------|
+| EASY | 2x2 | 5 min | 5 | 0.8x |
+| MEDIUM | 4x4 | 3 min | 3 | 1.0x |
+| HARD | 6x6 | 2 min | 2 | 1.5x |
+| EXPERT | 8x8 | 90s | 1 | 2.0x |
 
-- `CardGame.h` contains class declarations.
-- `CardGame.cpp` contains class method implementations and raylib-based UI rendering.
-- `main.cpp` only starts the game.
 
-## Build and Run (macOS)
+## Requirements
 
-If raylib is not installed yet:
+- **C++17** or later
+- **raylib** graphics library
+- **macOS/Linux/Windows** with GCC/Clang compiler
 
+## Installation & Build
+
+### 1. Install raylib
+
+**macOS:**
 ```bash
 brew install raylib
 ```
 
-Build:
-
+**Linux (Ubuntu/Debian):**
 ```bash
-g++ -std=c++17 -Wall -Wextra -pedantic main.cpp CardGame.cpp -o card-guessing-game $(pkg-config --libs --cflags raylib)
+sudo apt-get install libraylib-dev
 ```
 
-Run:
+**Windows:**
+Visit [raylib.com](https://www.raylib.com/) for installation instructions
 
+### 2. Build the Game
+
+**Manual compilation:**
 ```bash
+g++ -std=c++14 -Wall -Wextra \
+    main.cpp CardGame.cpp \
+    -o card-guessing-game $(pkg-config --libs --cflags raylib)
+
 ./card-guessing-game
 ```
-
-Gameplay basics:
-
-- Type your name on the start screen.
-- Press `2`, `4`, or `6` to choose board size.
-- Click cards to find matching pairs.
-- Match = `+10` points, mismatch = `-2` points (minimum score is `0`).
-
-## Team Members
-
-- Group: S26-05
-- Muhammad Umar (25L-0017)
-- Syed Naday Ali Zaidi (25L-0002)
-- Muhammad Huzaifa Aslam (25L-2558)
