@@ -8,7 +8,7 @@
 #include <fstream>
 #include "GameException.h"
 
-// Simple representation of a single playing card
+// Representation of a single playing card
 // Tracks its visible value and whether it is flipped or matched
 class Card {
 private:
@@ -102,7 +102,7 @@ public:
     std::vector<std::pair<std::string, int>> getTopScores(size_t limit = 10) const;
 };
 
-// Thin wrapper around raylib drawing/input calls
+// Thin wrapper around raylib drawing calls
 class UI {
 public:
     void displayBoard(const GameBoard& board);
@@ -112,7 +112,7 @@ public:
     void displayMessage(const std::string& message);
 };
 
-// Coordinates the whole game: menus, main loop, and interactions between
+// Coordinates the whole game including menus, main loop, and interactions between
 class Game {
 private:
     std::string gameState;
@@ -120,9 +120,9 @@ private:
     GameBoard gameBoard;
     ScoreSystem scoreSystem;
 
-    // Simplified state that used to be spread across multiple helper classes.
+    // state that used to be spread across multiple helper classes.
     int selectedBoardSize;
-    int selectedTimeLimit; // seconds, 0 = no limit
+    int selectedTimeLimit; // seconds, 0 for no limit
     int hintsRemaining;
     int hintsUsed;
     int lastHintR1, lastHintC1, lastHintR2, lastHintC2;
@@ -132,7 +132,7 @@ private:
     // Helper for name validation
     std::string validatePlayerName(const std::string& rawName);
     
-    // Difficulty and mode selection (simplified)
+    // Difficulty and mode selection
     void displayDifficultyMenu();
     void displayBoardSizeMenu();
 

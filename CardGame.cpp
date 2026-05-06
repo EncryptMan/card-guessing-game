@@ -218,16 +218,11 @@ ScoreSystem::ScoreSystem()
 }
 
 void ScoreSystem::updateScore(bool match, int elapsedSeconds, int hintsUsed, int attempts,
-                              int /*totalPairs*/) {
-    // Very simple scoring formula that is easy to understand:
-    // - Matching pair: base points = 100
-    // - Non-match: small penalty of -5
-    // - Subtract time (elapsedSeconds), subtract small hint penalty and attempt penalty
-    double base = match ? 100.0 : -5.0;
-    double penalties = static_cast<double>(elapsedSeconds) + hintsUsed * 5.0 + attempts * 1.0;
-    double raw = base * difficultyMultiplier - penalties;
-    int delta = static_cast<int>(std::max(0.0, raw));
-    currentGameScore += delta;
+                              int totalPairs) {
+    if (match) {
+        int points = static_cast<int>(10.0 * difficultyMultiplier);
+        currentGameScore += points;
+    }
 }
 
 int ScoreSystem::getCurrentScore() const {
@@ -378,7 +373,6 @@ std::string Game::validatePlayerName(const std::string& rawName) {
 
 void Game::displayDifficultyMenu() {
 
-    // Keys: 1=EASY(2x2), 2=MEDIUM(4x4), 3=HARD(6x6), 4=EXPERT(8x8)
     int selectedIndex = 2; // default MEDIUM
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_ONE)) selectedIndex = 1;
@@ -566,31 +560,18 @@ void Game::processTurn() {
             // Handle hint request space key
             if (IsKeyPressed(KEY_SPACE) && firstSelection[0] == -1 && hintsRemaining > 0) {
                 try {
-                    // Find two unmatched cards to hint at
+                    // Find first unmatched card and reveal it
                     bool found = false;
                     for (int r = 0; r < gameBoard.getGridSize() && !found; ++r) {
                         for (int c = 0; c < gameBoard.getGridSize() && !found; ++c) {
                             if (!gameBoard.getCard(r, c).getIsMatched()) {
-                                for (int r2 = r; r2 < gameBoard.getGridSize() && !found; ++r2) {
-                                    for (int c2 = (r == r2 ? c + 1 : 0); c2 < gameBoard.getGridSize(); ++c2) {
-                                        if (!gameBoard.getCard(r2, c2).getIsMatched() &&
-                                            gameBoard.checkMatch(gameBoard.getCard(r, c), gameBoard.getCard(r2, c2))) {
-                                            // Apply the hint: remember positions and reduce hint count
-                                            hintsRemaining -= 1;
-                                            hintsUsed += 1;
-                                            lastHintR1 = r; lastHintC1 = c; lastHintR2 = r2; lastHintC2 = c2;
-                                            hintActive = true;
-                                            message = "Hint revealed! (" + std::to_string(hintsRemaining) + " left)";
-                                            found = true;
-                                            break;
-                                        }
-                                    }
-                                }
+                                gameBoard.flipCard(r, c);
+                                hintsRemaining -= 1;
+                                hintsUsed += 1;
+                                message = "Hint: " + gameBoard.getCard(r, c).getValue() + " (" + std::to_string(hintsRemaining) + " hints left)";
+                                found = true;
                             }
                         }
-                    }
-                    if (!found) {
-                        message = "No matching pairs found to hint at!";
                     }
                 } catch (const GameException& e) {
                     message = "No hints available!";
