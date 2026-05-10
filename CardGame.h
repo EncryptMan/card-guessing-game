@@ -1,27 +1,29 @@
 #pragma once
 
-#include <map>
+#include <cstddef>
 #include <string>
-#include <vector>
 #include <memory>
 #include <chrono>
 #include <fstream>
 #include "GameException.h"
 
+using namespace std;
+
+
 // Representation of a single playing card
 // Tracks its visible value and whether it is flipped or matched
 class Card {
 private:
-    std::string value;
+    string value;
     bool isFlipped;
     bool isMatched;
 
 public:
     Card();
-    Card(const std::string& cardValue);
+    Card(const string& cardValue);
 
     // Getters
-    const std::string& getValue() const;
+    const string& getValue() const;
     bool getIsFlipped() const;
     bool getIsMatched() const;
 
@@ -34,7 +36,7 @@ public:
 // Manages the grid of Card objects and provides basic board operations
 class GameBoard {
 private:
-    std::vector<std::vector<Card>> cards;
+    Card cards[8][8];
     int gridSize;
 
     // Validation helper
@@ -45,7 +47,6 @@ public:
 
     // Getters
     int getGridSize() const;
-    const std::vector<std::vector<Card>>& getCards() const;
     const Card& getCard(int row, int col) const;
     Card& getCardMutable(int row, int col);
 
@@ -60,15 +61,15 @@ public:
 // Represents the player and tracks the number of attempts they made
 class Player {
 private:
-    std::string name;
+    string name;
     int attempts;
 
 public:
     Player();
-    Player(const std::string& playerName);
+    Player(const string& playerName);
 
     // Getters
-    const std::string& getName() const;
+    const string& getName() const;
     int getAttempts() const;
 
     // Player operations
@@ -79,12 +80,17 @@ public:
 
 // Keeps a simple current score and reads writes high scores to a text file
 class ScoreSystem {
+public:
+    static constexpr size_t MaxHighScores = 100;
+
 private:
     int currentGameScore;
     double difficultyMultiplier;
-    std::string highScoreFile;
-    // Stored as name -> score
-    std::map<std::string, int> highScores;
+    string highScoreFile;
+    // Stored as raw parallel arrays to keep the structure simple.
+    string highScoreNames[MaxHighScores];
+    int highScoreValues[MaxHighScores];
+    size_t highScoreCount;
 
 public:
     ScoreSystem();
@@ -97,9 +103,9 @@ public:
     void setDifficultyMultiplier(double multiplier);
 
     // High score persistence
-    void saveHighScore(const std::string& playerName, int score);
-    std::map<std::string, int> loadHighScores();
-    std::vector<std::pair<std::string, int>> getTopScores(size_t limit = 10) const;
+    void saveHighScore(const string& playerName, int score);
+    size_t loadHighScores();
+    size_t getTopScores(string names[], int scores[], size_t limit = 10) const;
 };
 
 // Thin wrapper around raylib drawing calls
@@ -108,14 +114,14 @@ public:
     void displayBoard(const GameBoard& board);
     void displayScore(int score);
     void displayAttempts(int attempts);
-    std::vector<int> getCardSelection();
-    void displayMessage(const std::string& message);
+    void getCardSelection(int selection[2]);
+    void displayMessage(const string& message);
 };
 
 // Coordinates the whole game including menus, main loop, and interactions between
 class Game {
 private:
-    std::string gameState;
+    string gameState;
     Player currentPlayer;
     GameBoard gameBoard;
     ScoreSystem scoreSystem;
@@ -127,10 +133,10 @@ private:
     int hintsUsed;
     int lastHintR1, lastHintC1, lastHintR2, lastHintC2;
     bool hintActive;
-    std::chrono::steady_clock::time_point startTime;
+    chrono::steady_clock::time_point startTime;
 
     // Helper for name validation
-    std::string validatePlayerName(const std::string& rawName);
+    string validatePlayerName(const string& rawName);
     
     // Difficulty and mode selection
     void displayDifficultyMenu();

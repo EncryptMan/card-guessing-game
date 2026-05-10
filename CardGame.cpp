@@ -8,6 +8,8 @@
 
 #include "raylib.h"
 
+using namespace std;
+
 static const int WindowWidth = 1000;
 static const int WindowHeight = 760;
 static const int BoardLeft = 60;
@@ -17,6 +19,7 @@ static const int CardGap = 10;
 
 static const GameBoard* LastBoardDrawn = nullptr;
 
+// Constructs rectangle object for a given card position on the board, used for drawing and click detection
 static Rectangle getCardRectangle(int row, int col, int gridSize) {
     const int cardSize = (BoardAreaSize - (gridSize + 1) * CardGap) / gridSize;
     const float x = static_cast<float>(BoardLeft + CardGap + col * (cardSize + CardGap));
@@ -24,10 +27,10 @@ static Rectangle getCardRectangle(int row, int col, int gridSize) {
     return Rectangle{x, y, static_cast<float>(cardSize), static_cast<float>(cardSize)};
 }
 
-static std::string trimName(const std::string& rawName) {
-    std::string clean;
+static string trimName(const string& rawName) {
+    string clean;
     for (char ch : rawName) {
-        if (!std::isspace(static_cast<unsigned char>(ch))) {
+        if (!isspace(static_cast<unsigned char>(ch))) {
             clean.push_back(ch);
         }
     }
@@ -36,13 +39,13 @@ static std::string trimName(const std::string& rawName) {
 
 Card::Card() : value(""), isFlipped(false), isMatched(false) {}
 
-Card::Card(const std::string& cardValue) : value(cardValue), isFlipped(false), isMatched(false) {
+Card::Card(const string& cardValue) : value(cardValue), isFlipped(false), isMatched(false) {
     if (cardValue.empty()) {
         throw InvalidCardException("Card value cannot be empty");
     }
 }
 
-const std::string& Card::getValue() const {
+const string& Card::getValue() const {
     return value;
 }
 
@@ -80,10 +83,6 @@ int GameBoard::getGridSize() const {
     return gridSize;
 }
 
-const std::vector<std::vector<Card>>& GameBoard::getCards() const {
-    return cards;
-}
-
 const Card& GameBoard::getCard(int row, int col) const {
     validateBoardPosition(row, col);
     return cards[row][col];
@@ -96,8 +95,7 @@ Card& GameBoard::getCardMutable(int row, int col) {
 
 void GameBoard::validateBoardPosition(int row, int col) const {
     if (row < 0 || row >= gridSize || col < 0 || col >= gridSize) {
-        throw InvalidCardException("Card position (" + std::to_string(row) + ", " + 
-                                  std::to_string(col) + ") is out of bounds");
+        throw InvalidCardException("Card position is out of bounds");
     }
 }
 
@@ -109,25 +107,24 @@ void GameBoard::initializeBoard(int size) {
         }
 
         gridSize = size;
-        cards.assign(gridSize, std::vector<Card>(gridSize));
-
-        std::vector<std::string> values;
+        string values[32];
+        int valueCount = 0;
         const int totalCards = gridSize * gridSize;
 
         for (int i = 0; i < totalCards / 2; ++i) {
-            std::string label;
+            string label;
             if (i < 26) {
-                label = std::string(1, static_cast<char>('A' + i));
+                label = string(1, static_cast<char>('A' + i));
             } else {
-                label = "C" + std::to_string(i - 25);
+                label = "C" + to_string(i - 25);
             }
-            values.push_back(label);
-            values.push_back(label);
+            values[valueCount++] = label;
+            values[valueCount++] = label;
         }
 
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::shuffle(values.begin(), values.end(), gen);
+        random_device rd;
+        mt19937 gen(rd());
+        shuffle(values, values + valueCount, gen);
 
         int index = 0;
         for (int row = 0; row < gridSize; ++row) {
@@ -138,9 +135,8 @@ void GameBoard::initializeBoard(int size) {
         }
     } catch (const GameException& e) {
         throw;
-    } catch (const std::exception& e) {
-        throw BoardInitializationException(
-            std::string("Board initialization error: ") + e.what());
+    } catch (const exception& e) {
+        throw BoardInitializationException(e.what());
     }
 }
 
@@ -172,14 +168,14 @@ bool GameBoard::allCardsMatched() const {
 
 Player::Player() : name("Player"), attempts(0) {}
 
-Player::Player(const std::string& playerName) 
+Player::Player(const string& playerName) 
     : name(playerName), attempts(0) {
     if (playerName.empty()) {
         throw GameException("Player name cannot be empty");
     }
 }
 
-const std::string& Player::getName() const {
+const string& Player::getName() const {
     return name;
 }
 
@@ -208,12 +204,12 @@ void Player::validateCoordinates(int row, int col, int gridSize) const {
 }
 
 ScoreSystem::ScoreSystem()
-    : currentGameScore(0), difficultyMultiplier(1.0), highScoreFile("highscores.txt") {
+    : currentGameScore(0), difficultyMultiplier(1.0), highScoreFile("highscores.txt"), highScoreCount(0) {
     // Load existing high scores if any into memory
     try {
-        highScores = loadHighScores();
+        highScoreCount = loadHighScores();
     } catch (...) {
-        highScores.clear();
+        highScoreCount = 0;
     }
 }
 
@@ -237,42 +233,83 @@ void ScoreSystem::setDifficultyMultiplier(double multiplier) {
     difficultyMultiplier = multiplier;
 }
 
-void ScoreSystem::saveHighScore(const std::string& playerName, int score) {
+void ScoreSystem::saveHighScore(const string& playerName, int score) {
     try {
-        const std::string name = trimName(playerName).empty() ? "Player" : trimName(playerName);
+        const string name = trimName(playerName).empty() ? "Player" : trimName(playerName);
         // keep the best score for each player
-        if (highScores.find(name) == highScores.end() || score > highScores[name]) {
-            highScores[name] = score;
+        size_t existingIndex = highScoreCount;
+        for (size_t i = 0; i < highScoreCount; ++i) {
+            if (highScoreNames[i] == name) {
+                existingIndex = i;
+                break;
+            }
         }
 
-        std::ofstream out(highScoreFile);
-        if (!out.is_open()) throw FileIOException("Cannot open highscores.txt for writing");
-        for (const auto& p : highScores) {
-            out << p.first << " " << p.second << "\n";
+        if (existingIndex == highScoreCount) {
+            if (highScoreCount < MaxHighScores) {
+                highScoreNames[highScoreCount] = name;
+                highScoreValues[highScoreCount] = score;
+                ++highScoreCount;
+            }
+        } else if (score > highScoreValues[existingIndex]) {
+            highScoreValues[existingIndex] = score;
         }
-    } catch (const std::exception& e) {
-        throw FileIOException(std::string("Save high score failed: ") + e.what());
+
+        ofstream out(highScoreFile);
+        if (!out.is_open()) throw FileIOException("Cannot open highscores.txt for writing");
+        for (size_t i = 0; i < highScoreCount; ++i) {
+            out << highScoreNames[i] << " " << highScoreValues[i] << "\n";
+        }
+    } catch (const exception& e) {
+        throw FileIOException(string("Save high score failed: ") + e.what());
     }
 }
 
-std::map<std::string, int> ScoreSystem::loadHighScores() {
-    std::map<std::string, int> out;
-    std::ifstream in(highScoreFile);
-    if (!in.is_open()) return out; // no file yet
-    std::string name;
+size_t ScoreSystem::loadHighScores() {
+    highScoreCount = 0;
+    ifstream in(highScoreFile);
+    if (!in.is_open()) return highScoreCount; // no file yet
+    string name;
     int value;
     while (in >> name >> value) {
-        out[name] = value;
+        size_t existingIndex = highScoreCount;
+        for (size_t i = 0; i < highScoreCount; ++i) {
+            if (highScoreNames[i] == name) {
+                existingIndex = i;
+                break;
+            }
+        }
+
+        if (existingIndex == highScoreCount) {
+            if (highScoreCount < MaxHighScores) {
+                highScoreNames[highScoreCount] = name;
+                highScoreValues[highScoreCount] = value;
+                ++highScoreCount;
+            }
+        } else if (value > highScoreValues[existingIndex]) {
+            highScoreValues[existingIndex] = value;
+        }
     }
-    return out;
+    return highScoreCount;
 }
 
-std::vector<std::pair<std::string, int>> ScoreSystem::getTopScores(size_t limit) const {
-    std::vector<std::pair<std::string, int>> list;
-    for (const auto& p : highScores) list.emplace_back(p.first, p.second);
-    std::sort(list.begin(), list.end(), [](auto &a, auto &b){ return a.second > b.second; });
-    if (list.size() > limit) list.resize(limit);
-    return list;
+size_t ScoreSystem::getTopScores(string names[], int scores[], size_t limit) const {
+    const size_t count = min(limit, highScoreCount);
+    for (size_t i = 0; i < count; ++i) {
+        names[i] = highScoreNames[i];
+        scores[i] = highScoreValues[i];
+    }
+
+    for (size_t i = 0; i < count; ++i) {
+        for (size_t j = i + 1; j < count; ++j) {
+            if (scores[j] > scores[i]) {
+                swap(scores[i], scores[j]);
+                swap(names[i], names[j]);
+            }
+        }
+    }
+
+    return count;
 }
 
 void UI::displayBoard(const GameBoard& board) {
@@ -308,24 +345,27 @@ void UI::displayBoard(const GameBoard& board) {
 }
 
 void UI::displayScore(int score) {
-    std::ostringstream stream;
+    ostringstream stream;
     stream << "Score: " << score;
     DrawText(stream.str().c_str(), 680, 180, 28, Color{230, 232, 235, 255});
 }
 
 void UI::displayAttempts(int attempts) {
-    std::ostringstream stream;
+    ostringstream stream;
     stream << "Attempts: " << attempts;
     DrawText(stream.str().c_str(), 680, 220, 28, Color{230, 232, 235, 255});
 }
 
-std::vector<int> UI::getCardSelection() {
+void UI::getCardSelection(int selection[2]) {
+    selection[0] = -1;
+    selection[1] = -1;
+
     if (LastBoardDrawn == nullptr) {
-        return std::vector<int>{-1, -1};
+        return;
     }
 
     if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        return std::vector<int>{-1, -1};
+        return;
     }
 
     const Vector2 mouse = GetMousePosition();
@@ -333,15 +373,15 @@ std::vector<int> UI::getCardSelection() {
         for (int col = 0; col < LastBoardDrawn->getGridSize(); ++col) {
             const Rectangle rect = getCardRectangle(row, col, LastBoardDrawn->getGridSize());
             if (CheckCollisionPointRec(mouse, rect)) {
-                return std::vector<int>{row, col};
+                selection[0] = row;
+                selection[1] = col;
+                return;
             }
         }
     }
-
-    return std::vector<int>{-1, -1};
 }
 
-void UI::displayMessage(const std::string& message) {
+void UI::displayMessage(const string& message) {
     DrawRectangle(45, 40, 910, 62, Color{19, 26, 37, 255});
     DrawRectangleLinesEx(Rectangle{45, 40, 910, 62}, 2.0f, Color{46, 77, 120, 255});
     DrawText(message.c_str(), 58, 58, 24, Color{238, 242, 245, 255});
@@ -357,17 +397,17 @@ int Game::getSelectedBoardSize() const {
     return selectedBoardSize;
 }
 
-std::string Game::validatePlayerName(const std::string& rawName) {
+string Game::validatePlayerName(const string& rawName) {
     try {
-        const std::string cleanedName = trimName(rawName);
+        const string cleanedName = trimName(rawName);
         if (cleanedName.empty()) {
             throw GameException("Player name cannot be empty");
         }
         return cleanedName;
     } catch (const GameException& e) {
         throw;
-    } catch (const std::exception& e) {
-        throw GameException(std::string("Name validation failed: ") + e.what());
+    } catch (const exception& e) {
+        throw GameException(string("Name validation failed: ") + e.what());
     }
 }
 
@@ -435,7 +475,7 @@ void Game::startGame() {
         InitWindow(WindowWidth, WindowHeight, "Card Guessing Game");
         SetTargetFPS(60);
 
-        std::string typedName;
+        string typedName;
 
         // Main menu loop
         while (!WindowShouldClose()) {
@@ -495,14 +535,14 @@ void Game::startGame() {
                 // Initialize simple timer and hint state
                 hintsUsed = 0;
                 hintActive = false;
-                startTime = std::chrono::steady_clock::now();
+                startTime = chrono::steady_clock::now();
 
                 // Main game loop - will use processTurn to drive a single frame/block of turns
                 while (!gameBoard.allCardsMatched() && !WindowShouldClose()) {
                     // check time limit
                     if (selectedTimeLimit > 0) {
-                        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                            std::chrono::steady_clock::now() - startTime).count();
+                        auto elapsed = chrono::duration_cast<chrono::seconds>(
+                            chrono::steady_clock::now() - startTime).count();
                         if (static_cast<int>(elapsed) >= selectedTimeLimit) {
                             break; // time expired
                         }
@@ -525,21 +565,21 @@ void Game::startGame() {
                 CloseWindow();
             }
         throw;
-    } catch (const std::exception& e) {
+    } catch (const exception& e) {
         if (!WindowShouldClose()) {
             CloseWindow();
         }
-        throw GameException(std::string("Game startup failed: ") + e.what());
+        throw GameException(string("Game startup failed: ") + e.what());
     }
 }
 
 void Game::processTurn() {
     try {
         UI ui;
-        std::string message = "Select the first card.";
+        string message = "Select the first card.";
 
-        std::vector<int> firstSelection{-1, -1};
-        std::vector<int> secondSelection{-1, -1};
+        int firstSelection[2] = {-1, -1};
+        int secondSelection[2] = {-1, -1};
 
         bool resolvingMismatch = false;
         double mismatchStartTime = 0.0;
@@ -547,13 +587,14 @@ void Game::processTurn() {
         while (!WindowShouldClose()) {
             // Check simplified timer
             int elapsedSeconds = static_cast<int>(
-                std::chrono::duration_cast<std::chrono::seconds>(
-                    std::chrono::steady_clock::now() - startTime).count());
+                chrono::duration_cast<chrono::seconds>(
+                    chrono::steady_clock::now() - startTime).count());
             if (selectedTimeLimit > 0 && elapsedSeconds >= selectedTimeLimit) {
                 message = "TIME'S UP! Game Over.";
             }
 
-            std::vector<int> click = ui.getCardSelection();
+            int click[2];
+            ui.getCardSelection(click);
             const int row = click[0];
             const int col = click[1];
 
@@ -568,7 +609,7 @@ void Game::processTurn() {
                                 gameBoard.flipCard(r, c);
                                 hintsRemaining -= 1;
                                 hintsUsed += 1;
-                                message = "Hint: " + gameBoard.getCard(r, c).getValue() + " (" + std::to_string(hintsRemaining) + " hints left)";
+                                message = "Hint: " + gameBoard.getCard(r, c).getValue() + " (" + to_string(hintsRemaining) + " hints left)";
                                 found = true;
                             }
                         }
@@ -583,13 +624,15 @@ void Game::processTurn() {
                     if (gameBoard.getCard(row, col).getIsMatched()) {
                         message = "That card is already matched. Choose a different one.";
                     } else if (firstSelection[0] == -1) {
-                        firstSelection = click;
+                        firstSelection[0] = click[0];
+                        firstSelection[1] = click[1];
                         gameBoard.flipCard(row, col);
                         message = "Great. Now select the second card. (SPACE for hint)";
                     } else if (row == firstSelection[0] && col == firstSelection[1]) {
                         message = "You clicked the same card. Choose another one.";
                     } else {
-                        secondSelection = click;
+                        secondSelection[0] = click[0];
+                        secondSelection[1] = click[1];
                         gameBoard.flipCard(row, col);
                         currentPlayer.makeGuess(firstSelection[0], firstSelection[1], secondSelection[0], secondSelection[1]);
 
@@ -612,7 +655,7 @@ void Game::processTurn() {
                         mismatchStartTime = GetTime();
                     }
                 } catch (const InvalidCardException& e) {
-                    message = std::string("Error: ") + e.what();
+                    message = string("Error: ") + e.what();
                 }
             }
 
@@ -634,8 +677,8 @@ void Game::processTurn() {
 
             // Display timer
             DrawText("Time:", 680, 250, 26, Color{185, 203, 221, 255});
-            int remaining = selectedTimeLimit > 0 ? std::max(0, selectedTimeLimit - elapsedSeconds) : 0;
-            std::ostringstream timeBuf;
+            int remaining = selectedTimeLimit > 0 ? max(0, selectedTimeLimit - elapsedSeconds) : 0;
+            ostringstream timeBuf;
             if (selectedTimeLimit > 0) {
                 timeBuf << remaining << "s";
             } else {
@@ -645,14 +688,14 @@ void Game::processTurn() {
             DrawText(timeBuf.str().c_str(), 680, 280, 36, timeColor);
 
             // Display hints
-            std::ostringstream hintText;
+            ostringstream hintText;
             hintText << "Hints: " << hintsRemaining << " (used: " << hintsUsed << ")";
             DrawText(hintText.str().c_str(), 680, 330, 26, Color{238, 214, 138, 255});
             DrawText("(Press SPACE for hint)", 680, 360, 20, Color{200, 180, 100, 255});
 
             // Display difficulty
             DrawText("Board:", 680, 410, 20, Color{159, 196, 225, 255});
-            std::ostringstream boardText;
+            ostringstream boardText;
             boardText << selectedBoardSize << " x " << selectedBoardSize;
             DrawText(boardText.str().c_str(), 680, 435, 24, Color{238, 211, 111, 255});
 
@@ -671,11 +714,13 @@ void Game::endGame() {
         gameState = "finished";
         scoreSystem.saveHighScore(currentPlayer.getName(), scoreSystem.getCurrentScore());
 
-        auto sortedScores = scoreSystem.getTopScores(8);
+        string topScoreNames[ScoreSystem::MaxHighScores];
+        int topScoreValues[ScoreSystem::MaxHighScores];
+        const size_t rowsToShow = scoreSystem.getTopScores(topScoreNames, topScoreValues, 8);
         // compute elapsed time
         int elapsedSeconds = static_cast<int>(
-            std::chrono::duration_cast<std::chrono::seconds>(
-                std::chrono::steady_clock::now() - startTime).count());
+            chrono::duration_cast<chrono::seconds>(
+                chrono::steady_clock::now() - startTime).count());
 
         while (!WindowShouldClose()) {
             if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
@@ -687,29 +732,28 @@ void Game::endGame() {
 
             DrawText("Game Complete!", 350, 40, 58, Color{247, 249, 252, 255});
 
-            std::ostringstream scoreLine;
+            ostringstream scoreLine;
             scoreLine << "Final Score: " << scoreSystem.getCurrentScore();
             DrawText(scoreLine.str().c_str(), 380, 160, 34, Color{232, 214, 133, 255});
 
-            std::ostringstream attemptsLine;
+            ostringstream attemptsLine;
             attemptsLine << "Total Attempts: " << currentPlayer.getAttempts();
             DrawText(attemptsLine.str().c_str(), 365, 206, 34, Color{199, 215, 229, 255});
 
-            std::ostringstream timeLine;
+            ostringstream timeLine;
             timeLine << "Time Taken: " << elapsedSeconds << "s";
             DrawText(timeLine.str().c_str(), 380, 252, 28, Color{152, 213, 175, 255});
 
-            std::ostringstream hintsLine;
+            ostringstream hintsLine;
             hintsLine << "Hints Used: " << hintsUsed;
             DrawText(hintsLine.str().c_str(), 420, 290, 24, Color{147, 206, 169, 255});
 
             DrawText("High Scores", 410, 350, 44, Color{157, 200, 236, 255});
 
-            const int rowsToShow = static_cast<int>(sortedScores.size());
-            for (int i = 0; i < rowsToShow; ++i) {
-                std::ostringstream line;
-                line << (i + 1) << ". " << sortedScores[i].first << " - " << sortedScores[i].second;
-                DrawText(line.str().c_str(), 320, 410 + i * 32, 26, Color{231, 237, 242, 255});
+            for (size_t i = 0; i < rowsToShow; ++i) {
+                ostringstream line;
+                line << (i + 1) << ". " << topScoreNames[i] << " - " << topScoreValues[i];
+                DrawText(line.str().c_str(), 320, 410 + static_cast<int>(i) * 32, 26, Color{231, 237, 242, 255});
             }
 
             DrawText("Press ENTER or ESC to close", 350, 700, 26, Color{162, 202, 174, 255});
@@ -718,7 +762,7 @@ void Game::endGame() {
         }
     } catch (const GameException& e) {
         throw;
-    } catch (const std::exception& e) {
-        throw GameException(std::string("End game error: ") + e.what());
+    } catch (const exception& e) {
+        throw GameException(string("End game error: ") + e.what());
     }
 }

@@ -36,10 +36,24 @@ echo "Compiling: $INPUT_FILE"
 echo "Output: $OUTPUT_FILE"
 echo "=========================================="
 
-# Compile all .cpp files in the current directory so multiple sources are linked
-# This avoids linker errors when the user passes a single source that depends
-# on other implementation files in the repo.
-SRC_FILES=(./*.cpp)
+# Compile the requested file plus any implementation sources.
+# Skip other entry-point files so we do not link multiple `main` definitions.
+SRC_FILES=()
+INPUT_BASENAME="$(basename "$INPUT_FILE")"
+for SOURCE_FILE in ./*.cpp; do
+    SOURCE_BASENAME="$(basename "$SOURCE_FILE")"
+
+    if [ "$SOURCE_BASENAME" = "$INPUT_BASENAME" ]; then
+        SRC_FILES+=("$SOURCE_FILE")
+        continue
+    fi
+
+    if grep -qE '^[[:space:]]*int[[:space:]]+main[[:space:]]*\(' "$SOURCE_FILE"; then
+        continue
+    fi
+
+    SRC_FILES+=("$SOURCE_FILE")
+done
 
 # Try to locate raylib and obtain flags via pkg-config if available
 RAYLIB_FLAGS=""
